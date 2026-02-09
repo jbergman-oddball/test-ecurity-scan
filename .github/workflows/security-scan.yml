@@ -138,7 +138,7 @@ jobs:
               # Scan each package with GuardDog
               while IFS= read -r line; do
                 # Extract package name - now including all dependency types
-                PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\.\K[^ ]+' || true)
+                PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
                 NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
 
                 # Only skip package.json metadata fields, NOT dependency version changes
