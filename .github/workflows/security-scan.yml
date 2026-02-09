@@ -136,13 +136,13 @@ jobs:
               echo "" >> $GITHUB_STEP_SUMMARY
             else
               # Scan each package with GuardDog
-            echo "$ALERT_LINES" | grep -E "(added|changed)" | while IFS= read -r line; do
-              # Extract package name - now including all dependency types
-              PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
-              NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
+              while IFS= read -r line; do
+                # Extract package name - now including all dependency types
+                PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\.\K[^ ]+' || true)
+                NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
 
-              # Only skip package.json metadata fields, NOT dependency version changes
-              if [ -n "$PKG_NAME" ]; then
+                # Only skip package.json metadata fields, NOT dependency version changes
+                if [ -n "$PKG_NAME" ]; then
                 echo "<details>" >> $GITHUB_STEP_SUMMARY
                 echo "<summary><strong>🔍 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION} - Security Scan</summary>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
@@ -173,11 +173,11 @@ jobs:
                   fi
                 fi
 
-                echo "" >> $GITHUB_STEP_SUMMARY
-                echo "</details>" >> $GITHUB_STEP_SUMMARY
-                echo "" >> $GITHUB_STEP_SUMMARY
-              fi
-            done < <(echo "$ALERT_LINES" | grep -E "(added|changed)")
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "</details>" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                fi
+              done < <(echo "$ALERT_LINES" | grep -E "(added|changed)")
             fi
 
             echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
