@@ -129,7 +129,9 @@ jobs:
 
                 # Run npm info and capture output
                 if [ -n "$NEW_VERSION" ]; then
-                  npm info "$PKG_NAME@$NEW_VERSION" 2>&1 || echo "Could not fetch info for $PKG_NAME@$NEW_VERSION"
+                  # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for exact version lookup
+                  CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
+                  npm info "$PKG_NAME@$CLEAN_VERSION" 2>&1 || echo "Could not fetch info for $PKG_NAME@$CLEAN_VERSION"
                 else
                   npm info "$PKG_NAME" 2>&1 || echo "Could not fetch info for $PKG_NAME"
                 fi >> $GITHUB_STEP_SUMMARY
@@ -165,7 +167,11 @@ jobs:
 
                 # Run GuardDog scan and capture output
                 if [ -n "$NEW_VERSION" ]; then
-                  SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$NEW_VERSION" 2>&1 || true)
+                  # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for GuardDog
+                  CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
+                  echo "Scanning $PKG_NAME@$CLEAN_VERSION (from range: $NEW_VERSION)" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$CLEAN_VERSION" 2>&1 || true)
                 else
                   SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" 2>&1 || true)
                 fi
