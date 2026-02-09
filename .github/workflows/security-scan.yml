@@ -128,10 +128,14 @@ jobs:
             echo "### 🔒 GuardDog Security Analysis" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
 
-            # Track if we scanned any packages
-            SCANNED_COUNT=0
+            # Check if there are any packages to scan
+            PACKAGES_TO_SCAN=$(echo "$ALERT_LINES" | grep -E "(added|changed)" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' | grep -v "^$" || true)
 
-            # Scan each package with GuardDog (including version changes)
+            if [ -z "$PACKAGES_TO_SCAN" ]; then
+              echo "ℹ️ No npm packages to scan (only metadata or script changes detected)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            else
+              # Scan each package with GuardDog
             echo "$ALERT_LINES" | grep -E "(added|changed)" | while IFS= read -r line; do
               # Extract package name - now including all dependency types
               PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
@@ -139,8 +143,6 @@ jobs:
 
               # Only skip package.json metadata fields, NOT dependency version changes
               if [ -n "$PKG_NAME" ]; then
-                SCANNED_COUNT=$((SCANNED_COUNT + 1))
-
                 echo "<details>" >> $GITHUB_STEP_SUMMARY
                 echo "<summary><strong>🔍 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION} - Security Scan</summary>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
@@ -153,12 +155,13 @@ jobs:
                 fi
 
                 # Check if any issues were found
-                ISSUES=$(echo "$SCAN_OUTPUT" | grep -i "found.*issue\|malicious\|suspicious\|warning" | grep -v "0 issues\|No suspicious" || true)
+                ISSUES=$(echo "$SCAN_OUTPUT" | grep -i "found.*indicator\|malicious\|suspicious\|warning" | grep -v "0 issues\|No suspicious" || true)
 
                 if [ -n "$ISSUES" ]; then
                   echo "⚠️ **Potential Issues Detected**" >> $GITHUB_STEP_SUMMARY
                   echo '```' >> $GITHUB_STEP_SUMMARY
-                  echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited" | grep -E "(Found|malicious|suspicious|risk|Rule|Severity|⚠|✗)" >> $GITHUB_STEP_SUMMARY
+                  # Show all output except installation logs
+                  echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited\|packages in" >> $GITHUB_STEP_SUMMARY
                   echo '```' >> $GITHUB_STEP_SUMMARY
                 else
                   # Show clean summary
@@ -175,11 +178,6 @@ jobs:
                 echo "" >> $GITHUB_STEP_SUMMARY
               fi
             done < <(echo "$ALERT_LINES" | grep -E "(added|changed)")
-
-            # If no packages were scanned, show a message
-            if [ "$SCANNED_COUNT" -eq 0 ]; then
-              echo "ℹ️ No npm packages to scan (only metadata or script changes detected)" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
             fi
 
             echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
