@@ -1,0 +1,100 @@
+# Reusable workflow for starting a Slack thread in the provided channel
+# NOTE: This is a copy from the main repo for testing purposes
+# In the test repo, this workflow is not actually used - we mock Slack notifications instead
+name: '[Utils] Start Slack Thread'
+
+on:
+  workflow_call:
+    inputs:
+      channel_name:
+        description: 'Name of the Slack channel where the thread should be started.'
+        type: string
+        default: 'va-mobile-build-alerts'
+      message:
+        description: 'Text to display for the message starting the thread.'
+        type: string
+        required: true
+    outputs:
+      thread_ts:
+        description: 'Timestamp of the Slack thread that was created.'
+        value: ${{ jobs.start_thread.outputs.thread_ts }}
+      channel_id:
+        description: 'Channel ID in Slack where thread that was created.'
+        value: ${{ jobs.get_channel_id.outputs.channel_id }}
+
+env:
+  SLACK_API_TOKEN: ${{ secrets.SLACK_API_TOKEN }}
+
+jobs:
+  get_channel_id:
+    name: Get channel ID
+    runs-on: ubuntu-latest
+    outputs:
+      channel_id: ${{ steps.search_slack.outputs.SLACK_CHANNEL_ID }}
+    steps:
+      - name: Search Slack for channel ID
+        id: search_slack
+        run: |
+          fetch_page() {
+            last_response=$(curl -X GET -H 'Authorization: Bearer '"$SLACK_API_TOKEN"' ' \
+            -H 'Content-type: application/x-www-form-urlencoded' \
+            https://slack.com/api/conversations.list\?limit=1000\&cursor=$cursor | jq .)
+          }
+          get_id() {
+            id=$(jq -r '.channels[] | .name as $data | select($data == "${{inputs.channel_name}}").id' <<< $last_response)
+          }
+
+          get_cursor() {
+            cursor=$(jq '.response_metadata.next_cursor' <<< $last_response)
+          }
+
+          id=""
+          cursor=""
+          last_response=""
+          fetch_page
+          get_id
+
+          while [[ -z "$id" ]]
+          do
+            get_cursor
+            fetch_page
+            get_id
+          done
+          echo SLACK_CHANNEL_ID=${id} >> $GITHUB_OUTPUT
+  start_thread:
+    name: Start thread
+    runs-on: ubuntu-latest
+    needs: get_channel_id
+    outputs:
+      thread_ts: ${{ steps.post_message.outputs.SLACK_THREAD_TS }}
+    steps:
+      - name: Post message to Slack
+        id: post_message
+        env:
+          SLACK_MESSAGE: ${{ inputs.message }}
+          CHANNEL_ID: ${{ needs.get_channel_id.outputs.channel_id }}
+        run: |
+          # Build JSON payload using jq to safely escape the message
+          payload=$(jq -n \
+            --arg channel "$CHANNEL_ID" \
+            --arg text "$SLACK_MESSAGE" \
+            '{channel: $channel, text: $text}')
+
+          response=$(curl -X POST \
+            -H "Authorization: Bearer $SLACK_API_TOKEN" \
+            -H 'Content-type: application/json' \
+            --data "$payload" \
+            https://slack.com/api/chat.postMessage)
+
+          # Check if the Slack API call was successful
+          ok=$(echo "$response" | jq -r '.ok')
+          if [ "$ok" != "true" ]; then
+            echo "Slack API error response:"
+            echo "$response"
+            error=$(echo "$response" | jq -r '.error // "unknown error"')
+            echo "Error: $error"
+            exit 1
+          fi
+
+          ts=$(echo "$response" | jq -r '.ts')
+          echo SLACK_THREAD_TS=${ts} >> $GITHUB_OUTPUT
