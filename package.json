@@ -1,6 +1,6 @@
 {
   "name": "test-security-scan",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Test repository for validating security scan workflow and package change detection",
   "scripts": {
     "list": "ls -la",
@@ -15,6 +15,7 @@
   "devDependencies": {
     "jest": "^29.0.0",
     "eslint": "^8.50.0",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "prettier": "^3.0.0"
   }
 }
