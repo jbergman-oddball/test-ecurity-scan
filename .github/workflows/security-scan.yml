@@ -127,8 +127,6 @@ jobs:
             # GuardDog Security Scan
             echo "### 🔒 GuardDog Security Analysis" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Scanning packages for malicious code and suspicious behavior..." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
 
             # Scan each package with GuardDog
             echo "$ALERT_LINES" | grep -E "(added|changed)" | while IFS= read -r line; do
@@ -137,18 +135,38 @@ jobs:
 
               if [ -n "$PKG_NAME" ] && [ "$PKG_NAME" != "version" ] && [ "$PKG_NAME" != "name" ]; then
                 echo "<details>" >> $GITHUB_STEP_SUMMARY
-                echo "<summary><strong>🔍 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION} - GuardDog Scan</summary>" >> $GITHUB_STEP_SUMMARY
+                echo "<summary><strong>🔍 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION} - Security Scan</summary>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
-                echo '```' >> $GITHUB_STEP_SUMMARY
 
-                # Run GuardDog scan via uvx
+                # Run GuardDog scan and capture output
                 if [ -n "$NEW_VERSION" ]; then
-                  uvx guarddog npm scan "$PKG_NAME" --version "$NEW_VERSION" 2>&1 || echo "⚠️ GuardDog scan failed for $PKG_NAME@$NEW_VERSION"
+                  SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$NEW_VERSION" 2>&1 || true)
                 else
-                  uvx guarddog npm scan "$PKG_NAME" 2>&1 || echo "⚠️ GuardDog scan failed for $PKG_NAME"
-                fi >> $GITHUB_STEP_SUMMARY
+                  SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" 2>&1 || true)
+                fi
 
-                echo '```' >> $GITHUB_STEP_SUMMARY
+                # Extract summary info (skip installation logs)
+                SUMMARY=$(echo "$SCAN_OUTPUT" | grep -E "(Installed|packages in|Found|malicious|suspicious|issues|✓|✗|⚠|No suspicious)" | head -5 || echo "Scan completed")
+
+                # Check if any issues were found
+                ISSUES=$(echo "$SCAN_OUTPUT" | grep -i "found.*issue\|malicious\|suspicious\|warning" | grep -v "0 issues\|No suspicious" || true)
+
+                if [ -n "$ISSUES" ]; then
+                  echo "⚠️ **Potential Issues Detected**" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+                  echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited" | grep -E "(Found|malicious|suspicious|risk|Rule|Severity|⚠|✗)" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
+                else
+                  # Show clean summary
+                  INSTALL_INFO=$(echo "$SCAN_OUTPUT" | grep "Installed.*packages in" || echo "Scan completed")
+                  echo "✅ **Clean - No malicious indicators detected**" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  if [ -n "$INSTALL_INFO" ]; then
+                    echo "_${INSTALL_INFO}_" >> $GITHUB_STEP_SUMMARY
+                  fi
+                fi
+
+                echo "" >> $GITHUB_STEP_SUMMARY
                 echo "</details>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
               fi
