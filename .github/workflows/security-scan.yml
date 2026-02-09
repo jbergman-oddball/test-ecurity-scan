@@ -83,8 +83,44 @@ jobs:
             echo "${{ steps.changed-files.outputs.alert_lines }}" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract package names and versions, then fetch npm info
+            echo "### 📋 Package Information" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Parse alert_lines to extract package names and versions
+            ALERT_LINES="${{ steps.changed-files.outputs.alert_lines }}"
+
+            # Extract package info using grep and awk
+            echo "$ALERT_LINES" | grep -E "(added|changed|removed)" | while IFS= read -r line; do
+              # Extract package name (word before "->")
+              PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
+
+              # Extract new version (after last "->")
+              NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
+
+              if [ -n "$PKG_NAME" ] && [ "$PKG_NAME" != "version" ] && [ "$PKG_NAME" != "name" ]; then
+                echo "<details>" >> $GITHUB_STEP_SUMMARY
+                echo "<summary><strong>📦 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION}</summary>" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo '```' >> $GITHUB_STEP_SUMMARY
+
+                # Run npm info and capture output
+                if [ -n "$NEW_VERSION" ]; then
+                  npm info "$PKG_NAME@$NEW_VERSION" 2>&1 || echo "Could not fetch info for $PKG_NAME@$NEW_VERSION"
+                else
+                  npm info "$PKG_NAME" 2>&1 || echo "Could not fetch info for $PKG_NAME"
+                fi >> $GITHUB_STEP_SUMMARY
+
+                echo '```' >> $GITHUB_STEP_SUMMARY
+                echo "</details>" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+
             echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
             echo "- Review the changes above" >> $GITHUB_STEP_SUMMARY
+            echo "- Check package information for security and compatibility" >> $GITHUB_STEP_SUMMARY
             echo "- Approve the 'Request bypass approval' job if changes are legitimate" >> $GITHUB_STEP_SUMMARY
             echo "- Workflow will continue after approval" >> $GITHUB_STEP_SUMMARY
           else
