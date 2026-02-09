@@ -1,6 +1,6 @@
 {
   "name": "test-security-scan",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Test repository for validating security scan workflow and package change detection",
   "scripts": {
     "list": "ls -la",
