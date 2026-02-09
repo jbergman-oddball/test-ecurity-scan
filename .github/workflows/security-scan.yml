@@ -68,10 +68,26 @@ jobs:
           echo "The value of 'any_changed' is ${{ steps.changed-files.outputs.any_changed }}"
           echo "The value of 'has_node' is ${{ steps.detect-node.outputs.has_node }}"
 
+      - name: Cache uv installation
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cache/uv
+          key: ${{ runner.os }}-uv-guarddog-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-guarddog-
+
       - name: Install uv for GuardDog
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+          if ! command -v uv &> /dev/null; then
+            echo "🔄 Installing uv (will be cached for next run)..."
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+          else
+            echo "✅ Using cached uv installation"
+          fi
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Create workflow summary
