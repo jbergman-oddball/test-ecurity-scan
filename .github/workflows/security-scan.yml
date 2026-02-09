@@ -98,7 +98,7 @@ jobs:
             ALERT_LINES="${{ steps.changed-files.outputs.alert_lines }}"
 
             # Extract package info using grep and awk
-            echo "$ALERT_LINES" | grep -E "(added|changed|removed)" | while IFS= read -r line; do
+            while IFS= read -r line; do
               # Extract package name (word before "->")
               PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
 
@@ -122,7 +122,7 @@ jobs:
                 echo "</details>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
               fi
-            done
+            done < <(echo "$ALERT_LINES" | grep -E "(added|changed|removed)")
 
             # GuardDog Security Scan - Always show this section
             echo "### 🔒 GuardDog Security Analysis" >> $GITHUB_STEP_SUMMARY
@@ -174,7 +174,7 @@ jobs:
                 echo "</details>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
               fi
-            done
+            done < <(echo "$ALERT_LINES" | grep -E "(added|changed)")
 
             # If no packages were scanned, show a message
             if [ "$SCANNED_COUNT" -eq 0 ]; then
