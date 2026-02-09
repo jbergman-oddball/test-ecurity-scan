@@ -4,7 +4,8 @@
   "description": "Test repository for validating security scan workflow and package change detection",
   "scripts": {
     "list": "ls -la",
-    "test": "jest"
+    "test": "jest",
+    "build": "echo 'Building...'"
   },
   "dependencies": {
     "express": "^4.18.0",
