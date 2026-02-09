@@ -10,6 +10,9 @@ Output format (tab-separated):
     TYPE    KEY                     NAME    OLD_VERSION    NEW_VERSION    FILE    LINE_NUMBER    LINE_TEXT
 
 Types: added, removed, changed
+
+Author: VA Mobile App Team
+Last Modified: 2026-02-09
 """
 
 import json
@@ -70,14 +73,12 @@ def detect_changes(base_sha: str, head_sha: str, filepath: str) -> List[Dict]:
     base_content = get_file_content(base_sha, filepath)
     head_content = get_file_content(head_sha, filepath)
 
-    # Keys we care about
+    # Keys we care about - only actual package dependencies
     interesting_keys = [
         'dependencies',
         'devDependencies',
         'peerDependencies',
-        'optionalDependencies',
-        'name',
-        'version'
+        'optionalDependencies'
     ]
 
     changes = []
