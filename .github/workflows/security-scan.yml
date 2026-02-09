@@ -131,7 +131,9 @@ jobs:
                 if [ -n "$NEW_VERSION" ]; then
                   # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for exact version lookup
                   CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
-                  npm info "$PKG_NAME@$CLEAN_VERSION" 2>&1 || echo "Could not fetch info for $PKG_NAME@$CLEAN_VERSION"
+                  echo "📌 Scanning specific version: $CLEAN_VERSION (NOT latest)" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  npm info "$PKG_NAME@$CLEAN_VERSION" 2>&1 | grep -v "^latest:" || echo "Could not fetch info for $PKG_NAME@$CLEAN_VERSION"
                 else
                   npm info "$PKG_NAME" 2>&1 || echo "Could not fetch info for $PKG_NAME"
                 fi >> $GITHUB_STEP_SUMMARY
@@ -169,10 +171,12 @@ jobs:
                 if [ -n "$NEW_VERSION" ]; then
                   # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for GuardDog
                   CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
-                  echo "Scanning $PKG_NAME@$CLEAN_VERSION (from range: $NEW_VERSION)" >> $GITHUB_STEP_SUMMARY
+                  echo "🎯 **Scanning EXACT version: $CLEAN_VERSION** (from semver range: $NEW_VERSION)" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
                   SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$CLEAN_VERSION" 2>&1 || true)
                 else
+                  echo '```' >> $GITHUB_STEP_SUMMARY
                   SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" 2>&1 || true)
                 fi
 
@@ -181,10 +185,9 @@ jobs:
 
                 if [ -n "$ISSUES" ]; then
                   echo "⚠️ **Potential Issues Detected**" >> $GITHUB_STEP_SUMMARY
-                  echo '```' >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
                   # Show all output except installation logs
                   echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited\|packages in" >> $GITHUB_STEP_SUMMARY
-                  echo '```' >> $GITHUB_STEP_SUMMARY
                 else
                   # Show clean summary
                   INSTALL_INFO=$(echo "$SCAN_OUTPUT" | grep "Installed.*packages in" || echo "Scan completed")
@@ -194,6 +197,8 @@ jobs:
                     echo "_${INSTALL_INFO}_" >> $GITHUB_STEP_SUMMARY
                   fi
                 fi
+
+                echo '```' >> $GITHUB_STEP_SUMMARY
 
                   echo "" >> $GITHUB_STEP_SUMMARY
                   echo "</details>" >> $GITHUB_STEP_SUMMARY
