@@ -68,6 +68,12 @@ jobs:
           echo "The value of 'any_changed' is ${{ steps.changed-files.outputs.any_changed }}"
           echo "The value of 'has_node' is ${{ steps.detect-node.outputs.has_node }}"
 
+      - name: Install uv for GuardDog
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Create workflow summary
         run: |
           echo "# 📦 Package Change Detection Summary" >> $GITHUB_STEP_SUMMARY
@@ -110,6 +116,36 @@ jobs:
                   npm info "$PKG_NAME@$NEW_VERSION" 2>&1 || echo "Could not fetch info for $PKG_NAME@$NEW_VERSION"
                 else
                   npm info "$PKG_NAME" 2>&1 || echo "Could not fetch info for $PKG_NAME"
+                fi >> $GITHUB_STEP_SUMMARY
+
+                echo '```' >> $GITHUB_STEP_SUMMARY
+                echo "</details>" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+
+            # GuardDog Security Scan
+            echo "### 🔒 GuardDog Security Analysis" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Scanning packages for malicious code and suspicious behavior..." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Scan each package with GuardDog
+            echo "$ALERT_LINES" | grep -E "(added|changed)" | while IFS= read -r line; do
+              PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
+              NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
+
+              if [ -n "$PKG_NAME" ] && [ "$PKG_NAME" != "version" ] && [ "$PKG_NAME" != "name" ]; then
+                echo "<details>" >> $GITHUB_STEP_SUMMARY
+                echo "<summary><strong>🔍 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION} - GuardDog Scan</summary>" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo '```' >> $GITHUB_STEP_SUMMARY
+
+                # Run GuardDog scan via uvx
+                if [ -n "$NEW_VERSION" ]; then
+                  uvx guarddog npm scan "$PKG_NAME" --version "$NEW_VERSION" 2>&1 || echo "⚠️ GuardDog scan failed for $PKG_NAME@$NEW_VERSION"
+                else
+                  uvx guarddog npm scan "$PKG_NAME" 2>&1 || echo "⚠️ GuardDog scan failed for $PKG_NAME"
                 fi >> $GITHUB_STEP_SUMMARY
 
                 echo '```' >> $GITHUB_STEP_SUMMARY
