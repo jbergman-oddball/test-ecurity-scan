@@ -68,6 +68,41 @@ jobs:
           echo "The value of 'any_changed' is ${{ steps.changed-files.outputs.any_changed }}"
           echo "The value of 'has_node' is ${{ steps.detect-node.outputs.has_node }}"
 
+      - name: Create workflow summary
+        run: |
+          echo "# 📦 Package Change Detection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]; then
+            echo "## ⚠️ Dependency Changes Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** Package dependencies have been modified and require approval." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Changes:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.changed-files.outputs.alert_lines }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Review the changes above" >> $GITHUB_STEP_SUMMARY
+            echo "- Approve the 'Request bypass approval' job if changes are legitimate" >> $GITHUB_STEP_SUMMARY
+            echo "- Workflow will continue after approval" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ No Dependency Changes" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** No package dependency changes detected." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Either package.json was not modified, or only non-dependency fields (like scripts) were changed." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Result:** No approval required, workflow will proceed automatically." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** \`${{ github.repository }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
   check_approval_label:
     name: Check PR for existing approval label
     runs-on: ubuntu-latest
