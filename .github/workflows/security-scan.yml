@@ -3,15 +3,12 @@ name: '[Security] Security Check - TEST'
 # MODIFIED FOR TESTING: Triggers on any branch instead of just develop/main
 on:
   push:
-    branches:
-      - '**'  # TEST: Allow any branch
     paths:
       - '**/package.json'
   pull_request:
-    branches:
-      - '**'  # TEST: Allow any branch
     paths:
       - '**/package.json'
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   check_for_locked_file_changes:
