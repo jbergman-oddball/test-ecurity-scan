@@ -8,8 +8,7 @@
     "build": "echo 'Building...'"
   },
   "dependencies": {
-    "express": "^4.19.0",
-    "lodash": "^4.17.21"
+    "express": "^4.19.0"
   },
   "devDependencies": {
     "jest": "^29.0.0",
