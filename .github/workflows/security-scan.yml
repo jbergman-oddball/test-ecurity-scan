@@ -115,38 +115,26 @@ jobs:
 
             # Extract package info using grep and awk
             while IFS= read -r line; do
-              # Extract package name (word before "->")
+              # Extract package name from the alert line
               PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
 
-              # Extract new version (after last "->")
-              NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
-
               if [ -n "$PKG_NAME" ] && [ "$PKG_NAME" != "version" ] && [ "$PKG_NAME" != "name" ]; then
+                # Read the actual version from package.json for this package
+                ACTUAL_VERSION=$(jq -r ".dependencies[\"$PKG_NAME\"] // .devDependencies[\"$PKG_NAME\"] // .peerDependencies[\"$PKG_NAME\"] // .optionalDependencies[\"$PKG_NAME\"] // \"\"" package.json)
+
+                # Strip semver prefix (^, ~, >=, etc) to get clean version number
+                CLEAN_VERSION=$(echo "$ACTUAL_VERSION" | sed 's/^[^0-9]*//')
+
                 echo "<details>" >> $GITHUB_STEP_SUMMARY
-                echo "<summary><strong>📦 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION}</summary>" >> $GITHUB_STEP_SUMMARY
+                echo "<summary><strong>📦 $PKG_NAME</strong> @ $ACTUAL_VERSION</summary>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
-
-                # DEBUG: Show what we extracted
-                {
-                  echo "RAW LINE: $line"
-                  echo "EXTRACTED PKG_NAME: '$PKG_NAME'"
-                  echo "EXTRACTED NEW_VERSION: '$NEW_VERSION'"
-                  echo ""
-                } >> $GITHUB_STEP_SUMMARY
-
                 echo '```' >> $GITHUB_STEP_SUMMARY
 
                 # Run npm info and capture output
-                if [ -n "$NEW_VERSION" ]; then
-                  # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for exact version lookup
-                  CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
+                if [ -n "$CLEAN_VERSION" ]; then
                   {
-                    echo "DEBUG: PKG_NAME=$PKG_NAME"
-                    echo "DEBUG: NEW_VERSION=$NEW_VERSION"
-                    echo "DEBUG: CLEAN_VERSION=$CLEAN_VERSION"
-                    echo ""
                     echo "📌 Scanning version: $CLEAN_VERSION"
-                    echo "   (from semver range: $NEW_VERSION)"
+                    echo "   (from package.json: $ACTUAL_VERSION)"
                     echo ""
                     NPM_OUTPUT=$(npm info "$PKG_NAME@$CLEAN_VERSION" 2>&1)
                     # Show npm output but filter confusing "latest:" line
@@ -175,27 +163,26 @@ jobs:
             else
               # Scan each package with GuardDog
               while IFS= read -r line; do
-                # Extract package name - now including all dependency types
+                # Extract package name from the alert line
                 PKG_NAME=$(echo "$line" | grep -oP '(dependencies|devDependencies|peerDependencies|optionalDependencies)\.\K[^ ]+' || true)
-                NEW_VERSION=$(echo "$line" | grep -oP '-> \K[^ ]+$' || true)
 
                 # Only skip package.json metadata fields, NOT dependency version changes
                 if [ -n "$PKG_NAME" ]; then
+                # Read the actual version from package.json for this package
+                ACTUAL_VERSION=$(jq -r ".dependencies[\"$PKG_NAME\"] // .devDependencies[\"$PKG_NAME\"] // .peerDependencies[\"$PKG_NAME\"] // .optionalDependencies[\"$PKG_NAME\"] // \"\"" package.json)
+
+                # Strip semver prefix (^, ~, >=, etc) to get clean version number
+                CLEAN_VERSION=$(echo "$ACTUAL_VERSION" | sed 's/^[^0-9]*//')
+
                 echo "<details>" >> $GITHUB_STEP_SUMMARY
-                echo "<summary><strong>🔍 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION} - Security Scan</summary>" >> $GITHUB_STEP_SUMMARY
+                echo "<summary><strong>🔍 $PKG_NAME</strong> @ $ACTUAL_VERSION - Security Scan</summary>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
 
                 # Run GuardDog scan and capture output
-                if [ -n "$NEW_VERSION" ]; then
-                  # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for GuardDog
-                  CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
+                if [ -n "$CLEAN_VERSION" ]; then
                   {
-                    echo "DEBUG: PKG_NAME=$PKG_NAME"
-                    echo "DEBUG: NEW_VERSION=$NEW_VERSION"
-                    echo "DEBUG: CLEAN_VERSION=$CLEAN_VERSION"
-                    echo ""
                     echo "🎯 **GuardDog scanning version: $CLEAN_VERSION**"
-                    echo "   (from semver range: $NEW_VERSION)"
+                    echo "   (from package.json: $ACTUAL_VERSION)"
                     echo ""
                     echo '```'
                     SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$CLEAN_VERSION" 2>&1 || true)
