@@ -1,9 +1,22 @@
-name: '[Security] Security Check - TEST'
+name: '[Security] Package Dependency Security Check'
 
-# MODIFIED FOR TESTING: Triggers on any push to test the workflow
+# PRODUCTION: Triggers on pull requests and pushes to main branches
 on:
-  push:
   pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '**/package.json'
+      - '**/package-lock.json'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '**/package.json'
+      - '**/package-lock.json'
   workflow_dispatch:
 
 jobs:
@@ -333,8 +346,8 @@ jobs:
     needs: [check_for_locked_file_changes, check_approval_label]
     # Only run approval job when package changes detected AND node present AND no existing approval label
     if: needs.check_for_locked_file_changes.outputs.any_changed == 'true' && needs.check_for_locked_file_changes.outputs.has_node == 'true' && needs.check_approval_label.outputs.has_approval_label == 'false'
-    # TEST: Environment commented out for testing (you may not have this environment configured)
-    # environment: bypass-package-lock
+    # PRODUCTION: Environment protection enabled - requires approval from authorized reviewers
+    environment: bypass-package-lock
     steps:
       - run: echo "Approval required for package dependency changes. An admin from the required group must approve this step."
       - name: Add package-scan-complete label to PR so future pushes don't require repeated approval
