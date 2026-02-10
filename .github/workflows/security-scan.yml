@@ -131,12 +131,21 @@ jobs:
                 if [ -n "$NEW_VERSION" ]; then
                   # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for exact version lookup
                   CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
-                  echo "📌 Scanning specific version: $CLEAN_VERSION (NOT latest)" >> $GITHUB_STEP_SUMMARY
-                  echo "" >> $GITHUB_STEP_SUMMARY
-                  npm info "$PKG_NAME@$CLEAN_VERSION" 2>&1 | grep -v "^latest:" || echo "Could not fetch info for $PKG_NAME@$CLEAN_VERSION"
+                  {
+                    echo "DEBUG: PKG_NAME=$PKG_NAME"
+                    echo "DEBUG: NEW_VERSION=$NEW_VERSION"
+                    echo "DEBUG: CLEAN_VERSION=$CLEAN_VERSION"
+                    echo ""
+                    echo "📌 Scanning version: $CLEAN_VERSION"
+                    echo "   (from semver range: $NEW_VERSION)"
+                    echo ""
+                    NPM_OUTPUT=$(npm info "$PKG_NAME@$CLEAN_VERSION" 2>&1)
+                    # Show npm output but filter confusing "latest:" line
+                    echo "$NPM_OUTPUT" | grep -v "^latest:" || echo "$NPM_OUTPUT"
+                  } >> $GITHUB_STEP_SUMMARY
                 else
-                  npm info "$PKG_NAME" 2>&1 || echo "Could not fetch info for $PKG_NAME"
-                fi >> $GITHUB_STEP_SUMMARY
+                  npm info "$PKG_NAME" 2>&1 >> $GITHUB_STEP_SUMMARY
+                fi
 
                 echo '```' >> $GITHUB_STEP_SUMMARY
                 echo "</details>" >> $GITHUB_STEP_SUMMARY
@@ -171,34 +180,58 @@ jobs:
                 if [ -n "$NEW_VERSION" ]; then
                   # Strip semver prefix characters (^, ~, >=, <=, >, <, =) for GuardDog
                   CLEAN_VERSION=$(echo "$NEW_VERSION" | sed 's/^[^0-9]*//')
-                  echo "🎯 **Scanning EXACT version: $CLEAN_VERSION** (from semver range: $NEW_VERSION)" >> $GITHUB_STEP_SUMMARY
-                  echo "" >> $GITHUB_STEP_SUMMARY
-                  echo '```' >> $GITHUB_STEP_SUMMARY
-                  SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$CLEAN_VERSION" 2>&1 || true)
+                  {
+                    echo "DEBUG: PKG_NAME=$PKG_NAME"
+                    echo "DEBUG: NEW_VERSION=$NEW_VERSION"
+                    echo "DEBUG: CLEAN_VERSION=$CLEAN_VERSION"
+                    echo ""
+                    echo "🎯 **GuardDog scanning version: $CLEAN_VERSION**"
+                    echo "   (from semver range: $NEW_VERSION)"
+                    echo ""
+                    echo '```'
+                    SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" --version "$CLEAN_VERSION" 2>&1 || true)
+
+                    # Check if any issues were found
+                    ISSUES=$(echo "$SCAN_OUTPUT" | grep -i "found.*indicator\|malicious\|suspicious\|warning" | grep -v "0 issues\|No suspicious" || true)
+
+                    if [ -n "$ISSUES" ]; then
+                      echo "⚠️ **Potential Issues Detected**"
+                      echo ""
+                      # Show all output except installation logs
+                      echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited\|packages in"
+                    else
+                      echo "✅ **Clean - No malicious indicators detected**"
+                      INSTALL_INFO=$(echo "$SCAN_OUTPUT" | grep "Installed.*packages in" || echo "")
+                      if [ -n "$INSTALL_INFO" ]; then
+                        echo ""
+                        echo "$INSTALL_INFO"
+                      fi
+                    fi
+                    echo '```'
+                  } >> $GITHUB_STEP_SUMMARY
                 else
-                  echo '```' >> $GITHUB_STEP_SUMMARY
-                  SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" 2>&1 || true)
+                  {
+                    echo '```'
+                    SCAN_OUTPUT=$(uvx guarddog npm scan "$PKG_NAME" 2>&1 || true)
+
+                    # Check if any issues were found
+                    ISSUES=$(echo "$SCAN_OUTPUT" | grep -i "found.*indicator\|malicious\|suspicious\|warning" | grep -v "0 issues\|No suspicious" || true)
+
+                    if [ -n "$ISSUES" ]; then
+                      echo "⚠️ **Potential Issues Detected**"
+                      echo ""
+                      echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited\|packages in"
+                    else
+                      echo "✅ **Clean - No malicious indicators detected**"
+                      INSTALL_INFO=$(echo "$SCAN_OUTPUT" | grep "Installed.*packages in" || echo "")
+                      if [ -n "$INSTALL_INFO" ]; then
+                        echo ""
+                        echo "$INSTALL_INFO"
+                      fi
+                    fi
+                    echo '```'
+                  } >> $GITHUB_STEP_SUMMARY
                 fi
-
-                # Check if any issues were found
-                ISSUES=$(echo "$SCAN_OUTPUT" | grep -i "found.*indicator\|malicious\|suspicious\|warning" | grep -v "0 issues\|No suspicious" || true)
-
-                if [ -n "$ISSUES" ]; then
-                  echo "⚠️ **Potential Issues Detected**" >> $GITHUB_STEP_SUMMARY
-                  echo "" >> $GITHUB_STEP_SUMMARY
-                  # Show all output except installation logs
-                  echo "$SCAN_OUTPUT" | grep -v "Installing\|Downloading\|Resolving\|Prepared\|Audited\|packages in" >> $GITHUB_STEP_SUMMARY
-                else
-                  # Show clean summary
-                  INSTALL_INFO=$(echo "$SCAN_OUTPUT" | grep "Installed.*packages in" || echo "Scan completed")
-                  echo "✅ **Clean - No malicious indicators detected**" >> $GITHUB_STEP_SUMMARY
-                  echo "" >> $GITHUB_STEP_SUMMARY
-                  if [ -n "$INSTALL_INFO" ]; then
-                    echo "_${INSTALL_INFO}_" >> $GITHUB_STEP_SUMMARY
-                  fi
-                fi
-
-                echo '```' >> $GITHUB_STEP_SUMMARY
 
                   echo "" >> $GITHUB_STEP_SUMMARY
                   echo "</details>" >> $GITHUB_STEP_SUMMARY
