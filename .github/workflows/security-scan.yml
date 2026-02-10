@@ -125,6 +125,15 @@ jobs:
                 echo "<details>" >> $GITHUB_STEP_SUMMARY
                 echo "<summary><strong>📦 $PKG_NAME</strong> ${NEW_VERSION:+@ $NEW_VERSION}</summary>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
+
+                # DEBUG: Show what we extracted
+                {
+                  echo "RAW LINE: $line"
+                  echo "EXTRACTED PKG_NAME: '$PKG_NAME'"
+                  echo "EXTRACTED NEW_VERSION: '$NEW_VERSION'"
+                  echo ""
+                } >> $GITHUB_STEP_SUMMARY
+
                 echo '```' >> $GITHUB_STEP_SUMMARY
 
                 # Run npm info and capture output
