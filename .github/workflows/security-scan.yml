@@ -145,6 +145,41 @@ jobs:
                 fi
 
                 echo '```' >> $GITHUB_STEP_SUMMARY
+
+                # Analyze npm info output and provide recommendations
+                {
+                  echo ""
+                  echo "**📊 Analysis & Recommendations:**"
+                  echo ""
+
+                  # Check for deprecation
+                  if echo "$NPM_OUTPUT" | grep -qi "DEPRECATED"; then
+                    echo "- ⚠️ **This package version is deprecated**"
+                    echo "  - Action: Consider upgrading to a non-deprecated version or finding an alternative"
+                  fi
+
+                  # Check for security vulnerabilities in dependencies
+                  if echo "$NPM_OUTPUT" | grep -qi "vulnerabilit"; then
+                    echo "- 🔴 **Known security vulnerabilities detected**"
+                    echo "  - Action: Review vulnerability details and upgrade to a patched version"
+                  fi
+
+                  # Check published date to see if version is old
+                  PUB_DATE=$(echo "$NPM_OUTPUT" | grep -oP "published.*ago" || echo "")
+                  if [ -n "$PUB_DATE" ]; then
+                    if echo "$PUB_DATE" | grep -qE "[3-9] years ago|[1-9][0-9]+ years ago"; then
+                      echo "- ⏰ **This version is 3+ years old** ($PUB_DATE)"
+                      echo "  - Action: Check if newer versions are available with security fixes and improvements"
+                    fi
+                  fi
+
+                  # If no issues found
+                  if ! echo "$NPM_OUTPUT" | grep -qi "DEPRECATED\|vulnerabilit"; then
+                    echo "- ✅ **No obvious issues detected in npm registry data**"
+                    echo "  - Next: Review GuardDog security scan below for malware analysis"
+                  fi
+                } >> $GITHUB_STEP_SUMMARY
+
                 echo "</details>" >> $GITHUB_STEP_SUMMARY
                 echo "" >> $GITHUB_STEP_SUMMARY
               fi
@@ -204,6 +239,50 @@ jobs:
                       fi
                     fi
                     echo '```'
+
+                    # Analyze GuardDog results and provide recommendations
+                    echo ""
+                    echo "**📊 Security Analysis & Recommendations:**"
+                    echo ""
+
+                    if [ -n "$ISSUES" ]; then
+                      # Analyze types of issues found
+                      if echo "$SCAN_OUTPUT" | grep -qi "exfiltrat"; then
+                        echo "- 🔴 **CRITICAL: Data exfiltration indicators found**"
+                        echo "  - Action: DO NOT APPROVE - This package may steal sensitive data"
+                        echo "  - Next: Investigate the package source and consider alternatives"
+                      fi
+
+                      if echo "$SCAN_OUTPUT" | grep -qi "obfuscat"; then
+                        echo "- ⚠️ **WARNING: Code obfuscation detected**"
+                        echo "  - Action: Review why code is obfuscated - may hide malicious behavior"
+                        echo "  - Next: Check package reputation and maintainer credibility"
+                      fi
+
+                      if echo "$SCAN_OUTPUT" | grep -qi "network\|http\|fetch\|request"; then
+                        echo "- ⚠️ **Network activity detected**"
+                        echo "  - Action: Verify the network calls are legitimate and expected"
+                        echo "  - Next: Review what data is being sent and to which domains"
+                      fi
+
+                      if echo "$SCAN_OUTPUT" | grep -qi "eval\|exec"; then
+                        echo "- ⚠️ **Dynamic code execution detected**"
+                        echo "  - Action: Review eval/exec usage - can be exploited for code injection"
+                        echo "  - Next: Ensure dynamic code execution is necessary and safe"
+                      fi
+
+                      echo ""
+                      echo "- 🛑 **RECOMMENDATION: Request security team review before approval**"
+
+                    else
+                      echo "- ✅ **No malicious indicators detected by GuardDog**"
+                      echo "- ✅ **Package appears safe based on static analysis**"
+                      echo ""
+                      echo "**Recommended Next Steps:**"
+                      echo "1. Verify this is the intended package version ($CLEAN_VERSION)"
+                      echo "2. Review npm info above for deprecation/vulnerability warnings"
+                      echo "3. If all checks pass, approve the workflow to continue"
+                    fi
                   } >> $GITHUB_STEP_SUMMARY
                 else
                   {
@@ -226,6 +305,17 @@ jobs:
                       fi
                     fi
                     echo '```'
+
+                    # Analyze results
+                    echo ""
+                    echo "**📊 Security Analysis:**"
+                    echo ""
+                    if [ -n "$ISSUES" ]; then
+                      echo "- 🛑 **Issues found - Review required before approval**"
+                    else
+                      echo "- ✅ **No malicious indicators detected**"
+                      echo "- Next: Review and approve if all checks pass"
+                    fi
                   } >> $GITHUB_STEP_SUMMARY
                 fi
 
@@ -236,11 +326,28 @@ jobs:
               done < <(echo "$ALERT_LINES" | grep -E "(added|changed)")
             fi
 
-            echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-            echo "- Review the changes above" >> $GITHUB_STEP_SUMMARY
-            echo "- Check package information for security and compatibility" >> $GITHUB_STEP_SUMMARY
-            echo "- Approve the 'Request bypass approval' job if changes are legitimate" >> $GITHUB_STEP_SUMMARY
-            echo "- Workflow will continue after approval" >> $GITHUB_STEP_SUMMARY
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🎯 Overall Recommendation" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Based on the security scans above:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ If all packages show clean scans:" >> $GITHUB_STEP_SUMMARY
+            echo "1. ✓ Verify the package versions match your intentions" >> $GITHUB_STEP_SUMMARY
+            echo "2. ✓ Check for any deprecation or vulnerability warnings in npm info" >> $GITHUB_STEP_SUMMARY
+            echo "3. ✓ Approve the **'Request bypass approval'** job below to continue the workflow" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ If any issues were detected:" >> $GITHUB_STEP_SUMMARY
+            echo "1. ⚠ Review the specific security analysis and recommendations above" >> $GITHUB_STEP_SUMMARY
+            echo "2. ⚠ Investigate flagged issues before proceeding" >> $GITHUB_STEP_SUMMARY
+            echo "3. ⚠ Consider consulting security team for critical findings" >> $GITHUB_STEP_SUMMARY
+            echo "4. ⚠ Only approve if you understand and accept the risks" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🚫 DO NOT APPROVE if:" >> $GITHUB_STEP_SUMMARY
+            echo "- Data exfiltration indicators are present" >> $GITHUB_STEP_SUMMARY
+            echo "- Package is deprecated with known security issues" >> $GITHUB_STEP_SUMMARY
+            echo "- You don't recognize the package or version change" >> $GITHUB_STEP_SUMMARY
+            echo "- Multiple suspicious indicators are detected" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ✅ No Dependency Changes" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
