@@ -8,7 +8,6 @@ The security-scan.yml workflow and detect_package_changes.py script need to be t
 - Uses a separate test repository to validate the full workflow
 - Avoids breaking production workflows
 - Provides clear validation steps
-- Lets add one more point to talk abouit
 
 ## Approach
 
