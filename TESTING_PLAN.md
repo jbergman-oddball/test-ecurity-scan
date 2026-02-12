@@ -1,11 +1,14 @@
 # Testing Plan: Security Scan Workflow & Package Change Detection
 
 ## Context
+
 The security-scan.yml workflow and detect_package_changes.py script need to be tested before moving to production. The current infrastructure doesn't have robust testing patterns, so we need a practical, isolated testing approach that:
+
 - Tests the Python script locally first
 - Uses a separate test repository to validate the full workflow
 - Avoids breaking production workflows
 - Provides clear validation steps
+- Lets add one more point to talk abouit
 
 ## Approach
 
@@ -14,6 +17,7 @@ The security-scan.yml workflow and detect_package_changes.py script need to be t
 **Goal**: Validate the detect_package_changes.py script works correctly with different scenarios.
 
 **Steps**:
+
 1. Create a local test script `test_detect_changes.sh` in `.github/scripts/` that:
    - Creates test commits with known package.json changes
    - Runs the Python script against those commits
@@ -43,6 +47,7 @@ The security-scan.yml workflow and detect_package_changes.py script need to be t
 **Goal**: Create a minimal test repository to validate the full GitHub Actions workflow.
 
 **Repository Structure**:
+
 ```
 test-security-scan-repo/
 ├── package.json           # Simple Node.js package
@@ -56,6 +61,7 @@ test-security-scan-repo/
 ```
 
 **Package.json Content** (minimal):
+
 ```json
 {
   "name": "test-security-scan",
@@ -70,6 +76,7 @@ test-security-scan-repo/
 ```
 
 **Workflow Modifications for Testing**:
+
 - Comment out or mock the `start_slack_thread` notification step
 - Set workflow to trigger on any branch (not just develop/main)
 - Keep the bypass-package-lock environment optional or remove for testing
@@ -115,6 +122,7 @@ test-security-scan-repo/
 **Goal**: Once validated, safely integrate back to the production repository.
 
 **Steps**:
+
 1. Keep the test repository for future regression testing
 2. If changes are needed to the scripts/workflow, apply them to main repo
 3. Test on a feature branch in main repo (not develop/main) first
@@ -125,15 +133,18 @@ test-security-scan-repo/
 ## Critical Files
 
 ### To Create (for testing):
+
 - `.github/scripts/test_detect_changes.sh` - Local testing script
 - Test repository (external, new repo)
 
 ### To Copy to Test Repo:
+
 - `.github/workflows/security-scan.yml`
 - `.github/scripts/detect_package_changes.py`
 - `.github/workflows/start_slack_thread.yml` (simplified)
 
 ### To Monitor:
+
 - `.github/workflows/security-scan.yml:111-112` - The approval condition
 - `.github/scripts/detect_package_changes.py:214-221` - Output format
 
@@ -142,6 +153,7 @@ test-security-scan-repo/
 ## Verification Steps
 
 ### Local Testing:
+
 ```bash
 cd .github/scripts
 chmod +x test_detect_changes.sh
@@ -150,6 +162,7 @@ chmod +x test_detect_changes.sh
 ```
 
 ### Test Repository:
+
 1. Create test repo on GitHub
 2. Copy files
 3. Run each test case (4 test branches)
@@ -157,6 +170,7 @@ chmod +x test_detect_changes.sh
 5. Check approval flow works correctly
 
 ### Production Validation:
+
 1. Test on non-production branch in main repo
 2. Monitor first real run
 3. Verify Slack notifications work
