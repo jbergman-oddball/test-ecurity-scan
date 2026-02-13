@@ -1,0 +1,70 @@
+## Description of Change
+<!-- Please include a description of the change and context. What would a code reviewer, or a future dev, 
+need to know about this PR in order to understand why this PR was created? This could include dependencies 
+introduced, changes in behavior, pointers to more detailed documentation. The description should be more 
+than a link to an issue. -->
+
+## Target Release Date
+<!-- Please include a targeted release date or N/A if not urgent -->
+
+## Link to Issue
+<!--Link to an issue by posting the issue link here. Your pull request is required to be linked to an issue in order for the pull request to Activate.-->
+
+## Screenshots/Video
+<!-- Add screenshots or video as needed. Before/after if changes are to be compared by reviewers.
+Before/after: <img src="" width="49%" />&nbsp;&nbsp;<img src="" width="49%" />
+Toggle: <details><summary></summary><img src="" width="49%" />&nbsp;&nbsp;<img src="" width="49%" /></details> -->
+
+## Testing Requirements
+<!-- **Valid Staging Test Users are a REQUIREMENT for QA to begin**
+What testing was done to verify the changes (local/unit)? What testing remains? Note edge cases, or special
+situations that could not be tested during development. -->
+
+Feature Flag
+<!--If changes are behind a feature flag, please document the required toggles for QA -->
+
+Acceptance Criteria
+<!-- AC should be written as should be a pass/fail statements and should include steps to carry out task if needed. -->
+
+- [ ] AC 1
+- [ ] AC 2
+
+Test User(s)
+<!-- What test users should be used to test test this feature? Please specify what each test user should test. -->
+
+- [ ] Test User 1
+- [ ] Test User 2
+
+## Checklist for PR Submitter
+<!-- PR Submitter should make sure all of these items are checked off before requesting a review -->
+  **PR Reviewer:** Confirm the items below as you review
+
+### Administrative and documentation
+
+- [ ] PR is connected to issue(s)
+- [ ] Acceptance criteria is added on this PR or referenced from the attached issue
+
+### Code testing
+
+- [ ] Unit tests have been created or updated to cover this change
+- [ ] End to end (Detox) tests have been created or updated to cover this change
+
+### Code implementation
+
+- [ ] All imports are absolute (no relative imports)
+- [ ] No magic strings (All string unions follow the [Union -> Constant](https://github.com/department-of-veterans-affairs/va-mobile-app/blob/develop/VAMobile/src/constants/common.ts) type pattern)
+- [ ] No secrets or API keys are checked present in the code
+
+### New features
+
+- [ ] UI changes
+- [ ] Design and UX has been approved by the code mobile team (documented on the PR or attached issue)
+
+## Checklist for QA
+<!-- This checklist is for the QA to complete. -->
+  **QA Engineer:** Check off the items below as you test
+
+- [ ] Tested on iOS
+- [ ] Tested on Android
+
+[Run a build for this branch](https://github.com/department-of-veterans-affairs/va-mobile-app/actions/workflows/on_demand_build.yml)
